@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+
+  coordinator:
+    image: gcr.io/kingpowerclick/presto:220-slim
+    networks:
+      - default
+      - web
+    volumes:
+      - ./docker/presto/etc/coordinator.properties:/presto/etc/config.properties:ro
+      - ./docker/presto/etc/jvm.config:/presto/etc/jvm.config:ro
+      - ./docker/presto/etc/node.properties:/presto/etc/node.properties:ro
+      - ./docker/presto/etc/catalog:/presto/etc/catalog:ro
+    ports: 
+      - 80
+    labels:
+      - "traefik.frontend.rule=Host:presto.hoilord.com"
+      - "traefik.docker.network=web"
+  worker:
+    image: gcr.io/kingpowerclick/presto:220-slim
+    volumes:
+      - ./docker/presto/etc/worker.properties:/presto/etc/config.properties:ro
+      - ./docker/presto/etc/jvm.config:/presto/etc/jvm.config:ro
+      - ./docker/presto/etc/node.properties:/presto/etc/node.properties:ro
+      - ./docker/presto/etc/catalog:/presto/etc/catalog:ro
+
+  metastore:
+    image: gcr.io/kingpowerclick/metastore:slim
+    environment:
+      - "CLASSPATH=/usr/share/java"
+    volumes:
+      - ./docker/metastore/conf:/usr/local/hive-metastore/conf:ro
+    ports: 
+      - 9083
+    entrypoint: 
+      - "sh"
+      - "-c"
+    command:
+      - "schematool -dbType mysql -initSchema && schematool -dbType mysql -validate && start-metastore"
+
+  mysql:
+    image: mysql:5.7
+    ports: 
+      - 3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+
+networks:
+  web:
+    driver: overlay
+
+volumes:
+  traefikdata:
+
+
